@@ -4,6 +4,7 @@ emoji: 🌖
 colorFrom: red
 colorTo: purple
 sdk: docker
+app_port: 8000
 pinned: false
 license: mit
 short_description: RL Env to prevent Sycophancy,Hallucination and Overclaiming
