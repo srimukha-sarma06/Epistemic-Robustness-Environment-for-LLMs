@@ -25,8 +25,8 @@ import time
 from statistics import mean, stdev
 from typing import Callable
 
-from environment import EpistemicRobustnessEnv
-from models import StepAction, TaskName
+from .environment import EpistemicRobustnessEnv
+from .models import StepAction, TaskName
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AGENT STRATEGIES
