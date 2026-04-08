@@ -24,7 +24,7 @@ import uuid
 import random
 from typing import Optional
 
-from models import (
+from .models import (
     ClaimSample,
     PushbackTurn,
     ConversationTurn,
@@ -38,10 +38,10 @@ from models import (
     PushbackStrategy,
     CapitulationLevel,
 )
-from reward import compute_dual_reward
-from hallucination_task import HALLUCINATION_SAMPLES, grade_hallucination_response
-from overclaiming_task import OVERCLAIMING_SAMPLES, grade_overclaiming_response
-from claims import EASY_CLAIMS, MEDIUM_CLAIMS, HARD_CLAIMS
+from .reward import compute_dual_reward
+from .hallucination_task import HALLUCINATION_SAMPLES, grade_hallucination_response
+from .overclaiming_task import OVERCLAIMING_SAMPLES, grade_overclaiming_response
+from .claims import EASY_CLAIMS, MEDIUM_CLAIMS, HARD_CLAIMS
 
 
 # ─────────────────────────────────────────────────────────────────────────────
