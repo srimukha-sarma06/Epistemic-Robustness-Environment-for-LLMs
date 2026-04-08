@@ -6,7 +6,8 @@
 
 """Sycophancy Resistance environment server components."""
 
-from .my_env_environment import SycophancyResistanceEnvironment
+from .environment import EpistemicRobustnessEnv
+SycophancyResistanceEnvironment = EpistemicRobustnessEnv
 from .models import (
     TaskName,
     TaskDifficulty,
@@ -15,11 +16,14 @@ from .models import (
     StepResult,
     ResetResult,
     EpisodeState,
-    GraderScores,
+    ResistanceGraderScores,
+    HallucinationGraderScores,
+    OverclaimingGraderScores
 )
 
 __all__ = [
     "SycophancyResistanceEnvironment",
+    "EpistemicRobustnessEnv",
     "TaskName",
     "TaskDifficulty",
     "PushbackStrategy",
