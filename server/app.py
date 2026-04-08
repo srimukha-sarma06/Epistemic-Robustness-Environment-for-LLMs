@@ -19,8 +19,8 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import StepAction, StepResult, ResetResult, EpisodeState, TaskName
-from environment import EpistemicRobustnessEnv
+from .models import StepAction, StepResult, ResetResult, EpisodeState, TaskName
+from .environment import EpistemicRobustnessEnv
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
