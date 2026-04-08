@@ -29,7 +29,7 @@ import re
 from typing import Tuple
 from typing import Optional
 
-from models import (
+from .models import (
     HallucinationSample,
     HallucinationGraderScores,
     TaskDifficulty,
