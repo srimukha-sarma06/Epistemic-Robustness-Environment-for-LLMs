@@ -31,5 +31,5 @@ __all__ = [
     "StepResult",
     "ResetResult",
     "EpisodeState",
-    "GraderScores"
+    "GraderScores",
 ]
