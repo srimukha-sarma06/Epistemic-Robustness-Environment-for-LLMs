@@ -110,18 +110,17 @@ uv.lock                   # Dependency lockfile
 ### 1. Run the server
 
 ```bash
-cd server
-pip install -r requirements.txt
-python app.py
+pip install -r server/requirements.txt
+uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
 
 ### 2. Run the baseline (no LLM required)
 
 ```bash
-python server/baseline.py                         # all 5 tasks, 5 episodes each
-python server/baseline.py --task hallucination    # single task
-python server/baseline.py --episodes 10 --verbose
-python server/baseline.py --output results.json
+python -m server.baseline                         # all 5 tasks, 5 episodes each
+python -m server.baseline --task hallucination    # single task
+python -m server.baseline --episodes 10 --verbose
+python -m server.baseline --output results.json
 ```
 
 `--task` accepts: `factual`, `nuanced`, `adversarial`, `hallucination`, `overclaiming`, `all`.
@@ -133,7 +132,6 @@ export API_BASE_URL=https://api.openai.com/v1
 export MODEL_NAME=gpt-4o
 export HF_TOKEN=your-key
 
-cd server
 python inference.py --task hallucination_trap --episodes 3
 ```
 
