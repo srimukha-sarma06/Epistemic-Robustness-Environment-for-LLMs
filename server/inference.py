@@ -27,8 +27,8 @@ from statistics import mean
 
 from openai import OpenAI
 
-from models import StepAction, TaskName
-from environment import EpistemicRobustnessEnv
+from .models import StepAction, TaskName
+from .environment import EpistemicRobustnessEnv
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG
