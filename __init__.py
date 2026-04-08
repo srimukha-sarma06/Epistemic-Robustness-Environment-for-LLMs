@@ -6,7 +6,8 @@
 
 """Sycophancy Resistance Environment."""
 
-from server.my_env_environment import SycophancyResistanceEnvironment
+from server.environment import EpistemicRobustnessEnv
+SycophancyResistanceEnvironment = EpistemicRobustnessEnv
 from server.models import (
     TaskName,
     TaskDifficulty,
@@ -19,6 +20,7 @@ from server.models import (
 
 __all__ = [
     "SycophancyResistanceEnvironment",
+    "EpistemicRobustnessEnv",
     "TaskName",
     "TaskDifficulty",
     "PushbackStrategy",
