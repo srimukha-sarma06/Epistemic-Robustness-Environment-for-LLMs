@@ -9,7 +9,6 @@ license: mit
 short_description: RL Env to prevent Sycophancy,Hallucination and Overclaiming
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
 # Epistemic Robustness Environment
 
 An [OpenEnv](https://openenv.dev)-compatible RL environment built around a single root capability: **know what you know, hold it under pressure, and admit what you don't.**
