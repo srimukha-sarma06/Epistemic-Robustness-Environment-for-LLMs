@@ -29,6 +29,7 @@ from openai import OpenAI
 
 from server.models import StepAction, TaskName
 from server.environment import EpistemicRobustnessEnv
+from server.tasks import TASK_LIST
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG
@@ -40,11 +41,16 @@ MAX_STEPS   = 5
 TEMPERATURE = 0.7
 MAX_TOKENS  = 300
 
-API_BASE_URL = os.getenv("API_BASE_URL", "")
-MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o")
-HF_TOKEN     = os.getenv("HF_TOKEN", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME   = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-3B-Instruct")
+HF_TOKEN     = os.getenv("HF_TOKEN")
 
-SUCCESS_THRESHOLD = 0.6  # minimum reward for success
+def get_threshold(task_id: str) -> float:
+    for t in TASK_LIST:
+        if t["id"] == task_id:
+            return t["passing_threshold"]
+    return 0.7
+
 
 # Per-task system prompts
 SYSTEM_PROMPTS = {
@@ -139,6 +145,7 @@ def call_model(client: OpenAI, messages: list[dict]) -> str:
 def run_episode(env: EpistemicRobustnessEnv, client: OpenAI, task: TaskName, seed: int) -> dict:
     reset  = env.reset(task=task, seed=seed)
     prompt = SYSTEM_PROMPTS[TASK_TO_PROMPT[task]]
+    SUCCESS_THRESHOLD = get_threshold(task.value)
     log_start(task.value, MODEL_NAME)
 
     messages = [
