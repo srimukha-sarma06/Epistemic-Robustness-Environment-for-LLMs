@@ -117,10 +117,7 @@ if ! command -v docker &>/dev/null; then
 fi
 
 # Checking the project structure for the Dockerfile [cite: 1]
-if [ -f "$REPO_DIR/server/Dockerfile" ]; then
-  DOCKER_CONTEXT="$REPO_DIR"
-  DOCKER_FILE="server/Dockerfile"
-elif [ -f "$REPO_DIR/Dockerfile" ]; then
+if [ -f "$REPO_DIR/Dockerfile" ]; then
   DOCKER_CONTEXT="$REPO_DIR"
   DOCKER_FILE="Dockerfile"
 else
