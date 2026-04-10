@@ -19,6 +19,7 @@ dependencies = [
     "httpx",
     "fastapi",
     "uvicorn",
+    "openenv>=0.1.13",
 ]
 
 [project.optional-dependencies]

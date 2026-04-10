@@ -1,4 +1,6 @@
 README.md
+__init__.py
+inference.py
 pyproject.toml
 ./__init__.py
 ./inference.py

@@ -8,6 +8,7 @@ Requires-Dist: docker
 Requires-Dist: httpx
 Requires-Dist: fastapi
 Requires-Dist: uvicorn
+Requires-Dist: openenv>=0.1.13
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
