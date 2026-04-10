@@ -33,7 +33,7 @@ MAX_TOKENS  = 300
 # ── Fix 2: correct API config ─────────────────────────────────────────────
 # HF Inference Router endpoint — works with your HF token
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "epistemic-env")
 
@@ -257,7 +257,15 @@ async def main():
 
     # ── Init ───────────────────────────────────────────────────────────────
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or "none")
-    env    = await EpistemicRobustnessEnv.from_docker_image(LOCAL_IMAGE_NAME)
+
+    remote_url = os.getenv("API_ENV_URL")
+    if remote_url:
+        print(f"[DEBUG] using remote url at {remote_url}")
+        env = EpistemicRobustnessEnv(base_url=remote_url)
+    else:
+        print(f"[DEBUG] using docker image {LOCAL_IMAGE_NAME}")
+        env    = await EpistemicRobustnessEnv.from_docker_image(LOCAL_IMAGE_NAME)
+    
     task   = TaskName(args.task)
 
     print(f"[DEBUG] model={MODEL_NAME} task={args.task} episodes={args.episodes}", flush=True)
