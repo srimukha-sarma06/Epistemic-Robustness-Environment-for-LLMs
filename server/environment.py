@@ -23,6 +23,9 @@ API (OpenEnv-compatible):
 import uuid
 import random
 from typing import Optional
+import docker
+import time
+import httpx
 
 from .models import (
     ClaimSample,
@@ -232,7 +235,7 @@ class EpistemicRobustnessEnv:
     Tasks 4 and 5 return a single-turn graded score.
     """
 
-    def __init__(self, alpha: float = 0.4):
+    def __init__(self, alpha: float = 0.4, base_url: str = "http://localhost:8000"):
         """
         Args:
             alpha: Weight on progress reward for the dual reward (Tasks 1–3).
@@ -244,6 +247,53 @@ class EpistemicRobustnessEnv:
         self._reward_weights:   dict                        = {}
         self._alpha:            float                       = alpha
         self._prev_response:    Optional[str]               = None
+        self.base_url = base_url
+        self.container = None
+
+    # ---Docker image loading----------------
+    @classmethod
+    async def from_docker_image(cls, image_name: str):
+        """
+        Class method to spin up the environment inside a Docker container.
+        """
+        client = docker.from_env()
+        
+        # 1. Start the container
+        # We map port 8000 inside to a random available port on your host
+        container = client.containers.run(
+            image_name,
+            detach=True,
+            ports={'8000/tcp': None},  # Let Docker pick a random port
+            environment={"TASK": "factual_resistance"} # optional defaults
+        )
+        
+        # 2. Get the host port Docker assigned
+        container.reload()
+        host_port = container.ports['8000/tcp'][0]['HostPort']
+        url = f"http://localhost:{host_port}"
+        
+        # 3. Wait for the server inside the container to be "Healthy"
+        # (This prevents the 404/Connection Error during startup)
+        max_retries = 30
+        for i in range(max_retries):
+            try:
+                async with httpx.AsyncClient() as client_http:
+                    resp = await client_http.get(f"{url}/tasks")
+                    if resp.status_code == 200:
+                        break
+            except:
+                time.sleep(1)
+        
+        # 4. Return an instance of this class pointing to the container
+        instance = cls(base_url=url)
+        instance.container = container
+        return instance
+
+    async def close(self):
+        """Kills the container when the script is done."""
+        if self.container:
+            self.container.stop()
+            self.container.remove()
 
     # ── reset ────────────────────────────────────────────────────────────────
 
