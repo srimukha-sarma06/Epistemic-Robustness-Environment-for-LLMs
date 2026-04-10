@@ -15,7 +15,7 @@ description = "My Env environment for OpenEnv"
 requires-python = ">=3.10"
 dependencies = [
     "openai",
-    "docker",  
+    "docker",
     "httpx",
     "fastapi",
     "uvicorn",
