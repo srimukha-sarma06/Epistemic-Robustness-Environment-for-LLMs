@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: openenv-my_env
+Version: 0.1.0
+Summary: My Env environment for OpenEnv
+Requires-Python: >=3.10
+Requires-Dist: openai
+Requires-Dist: docker
+Requires-Dist: httpx
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
