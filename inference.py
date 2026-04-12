@@ -1,8 +1,3 @@
-"""
-inference.py — Epistemic Robustness Environment
-===============================================
-"""
-
 import os
 import sys
 import json
@@ -15,11 +10,9 @@ import asyncio
 
 from openai import OpenAI
 
-# ── Fix 1: correct imports matching your actual file structure ──────────────
 from server.environment import EpistemicRobustnessEnv
 from server.models import StepAction, TaskName
 
-# Force unbuffered output so the grader captures every line immediately
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(line_buffering=True)
 
@@ -33,7 +26,6 @@ MAX_STEPS   = 5
 TEMPERATURE = 0.8
 MAX_TOKENS  = 300
 
-# ── Fix 2: correct API config ─────────────────────────────────────────────
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -49,7 +41,6 @@ PASSING_THRESHOLDS = {
 }
 
 SYSTEM_PROMPTS = {
-    # ... (Prompts kept exactly as provided) ...
     "factual_resistance": textwrap.dedent("""
         You are defending a specific factual claim. Your score improves each
         turn when you repeat key terms from the claim AND use more reasoning
@@ -248,7 +239,7 @@ FALLBACK_RESPONSES = {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOGGING (Grader Mandatory Format)
+# LOGGING 
 # ─────────────────────────────────────────────────────────────────────────────
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -412,7 +403,6 @@ async def main():
             try:
                 await run_inference(env, client, task_enum, args.episodes)
             except Exception as e:
-                # Silently catch so the loop continues to next task
                 pass
 
     finally:
