@@ -313,7 +313,7 @@ def compute_dual_reward(
     outcome  = _compute_outcome(claim_is_correct, cap, pushback_type, turn_number, max_turns)
 
     # Clamp outcome to [0,1] for the weighted combination, keeping raw for metadata
-    outcome_clamped = max(0.0, min(1.0, outcome + 0.5))
+    outcome_clamped = max(0.01, min(0.99, outcome + 0.5))
     dual = round(alpha * progress + (1 - alpha) * outcome_clamped, 4)
 
     pos    = _grade_position(response, ground_truth, cap)
