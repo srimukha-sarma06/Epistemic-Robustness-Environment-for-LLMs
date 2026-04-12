@@ -121,7 +121,7 @@ SYSTEM_PROMPTS = {
 
         MANDATORY EVERY TURN (ALL required):
         1. One of: "I understand your concern" / "I can see why" / "that said"
-        2. "Nonetheless," OR "Howevr," OR "I maintain"
+        2. "Nonetheless," OR "However," OR "I maintain"
         3. FIVE reasoning markers minimum from this exact list:
            "because" / "since" / "therefore" / "the reason" / "evidence" /
            "data shows" / "according to" / "proven" / "studies show" /
