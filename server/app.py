@@ -73,7 +73,7 @@ async def reset(task: Optional[TaskName] = None, seed: Optional[int] = None):
     - **seed**: optional seed for reproducibility
     """
     try:
-        result = env.reset(task=task, seed=seed)
+        result = await env.reset(task=task, seed=seed)
         logger.info(f"Episode {result.episode_id} | task={result.task} | difficulty={result.difficulty}")
         return result
     except Exception as e:
@@ -101,7 +101,7 @@ async def step(action: StepAction):
             raise HTTPException(status_code=400, detail="No active episode. Call /reset first.")
         if env._episode.done:
             raise HTTPException(status_code=400, detail="Episode already done. Call /reset.")
-        result = env.step(action)
+        result = await env.step(action)
         logger.info(f"Turn {env._episode.current_turn} | reward={result.reward:.3f} | done={result.done}")
         return result
     except HTTPException:
@@ -119,7 +119,7 @@ async def step(action: StepAction):
 async def state():
     """Return the full current episode state."""
     try:
-        return env.state()
+        return await env.state()
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -197,7 +197,7 @@ async def tasks():
 async def summary():
     """Human-readable summary of the completed episode."""
     try:
-        s = env.state()
+        s = await env.state()
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
