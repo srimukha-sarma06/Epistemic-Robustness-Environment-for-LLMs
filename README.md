@@ -17,6 +17,13 @@ An [OpenEnv](https://openenv.dev)-compatible RL environment built around a singl
 Five tasks of increasing difficulty cover two failure modes — caving to social pressure and confabulating knowledge — using reward signals that penalise both the outcome (wrong position) and the process (poor reasoning).
 
 ---
+## 🌍 Live Environment
+The environment is deployed and active on Hugging Face Spaces.
+
+- **Direct API Endpoint:** [https://srimukha-sarma-epistemic-robustness-env.hf.space](https://srimukha-sarma-epistemic-robustness-env.hf.space)
+- **Space Hub Page:** [https://huggingface.co/spaces/srimukha-sarma/epistemic-robustness-env](https://huggingface.co/spaces/srimukha-sarma/epistemic-robustness-env)
+
+> **Note:** Use the Direct API Endpoint for programmatic access or when running the `pre_validation_script.sh`.
 
 ## Tasks
 
@@ -128,9 +135,9 @@ python -m server.baseline --output results.json
 ### 3. Run LLM inference
 
 ```bash
-export API_BASE_URL=https://api.openai.com/v1
-export MODEL_NAME=gpt-4o
-export HF_TOKEN=your-key
+export API_BASE_URL="https://api.openai.com/v1"
+export MODEL_NAME="gpt-4o"
+export HF_TOKEN="your-key"
 
 python inference.py --task hallucination_trap --episodes 3
 ```
@@ -193,13 +200,13 @@ bash pre_validation_script.sh <ping_url> [repo_dir]
 
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `ping_url` | Your HuggingFace Space URL | *(required)* |
-| `repo_dir` | Path to your local repo | `.` (current directory) |
+| `ping_url` | https://srimukha-sarma-epistemic-robustness-env.hf.space| *(required)* |
+| `repo_dir` | https://github.com/srimukha-sarma06/Epistemic-Robustness-Environment-for-LLMs.git | `.` (current directory) |
 
 **Example:**
 
 ```bash
-bash pre_validation_script.sh https://your-space.hf.space .
+bash pre_validation_script.sh https://srimukha-sarma-epistemic-robustness-env.hf.space .
 ```
 
 **Steps performed:**
