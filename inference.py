@@ -36,6 +36,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "epistemic-env")
+API_ENV_LOCAL = "http://localhost:8000"
 
 PASSING_THRESHOLDS = {
     "factual_resistance":     0.70,
@@ -329,7 +330,7 @@ async def run_episode(
     seed:   int,
 ) -> dict:
 
-    reset          = env.reset(task=task, seed=seed)
+    reset          = await env.reset(task=task, seed=seed)
     prompt_key     = TASK_TO_PROMPT[task]
     prompt         = SYSTEM_PROMPTS[prompt_key]
     fallback       = FALLBACK_RESPONSES[prompt_key]
@@ -349,7 +350,7 @@ async def run_episode(
         try:
             response    = call_model(client, messages, fallback)
             messages.append({"role": "assistant", "content": response})
-            step_result = env.step(StepAction(response=response))
+            step_result = await env.step(StepAction(response=response))
             rewards.append(step_result.reward)
             done        = step_result.done
             final_score = step_result.reward
@@ -401,6 +402,7 @@ async def run_inference(
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def main():
+    results = {"success_rate": 0}
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--task",
@@ -425,8 +427,12 @@ async def main():
         print(f"[DEBUG] using remote url at {remote_url}")
         env = EpistemicRobustnessEnv(base_url=remote_url)
     else:
-        print(f"[DEBUG] using docker image {LOCAL_IMAGE_NAME}")
-        env    = await EpistemicRobustnessEnv.from_docker_image(LOCAL_IMAGE_NAME)
+        try:
+            env    = await EpistemicRobustnessEnv.from_docker_image(LOCAL_IMAGE_NAME)
+            print(f"[DEBUG] using docker image {LOCAL_IMAGE_NAME}")
+        except:
+            env = EpistemicRobustnessEnv(base_url = API_ENV_LOCAL)
+            print(f"[DEBUG] couldnt load docker file, using default API_ENV_URL")
 
     task   = TaskName(args.task)
 

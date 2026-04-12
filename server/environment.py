@@ -24,7 +24,7 @@ import uuid
 import random
 from typing import Optional
 import docker
-import time
+import asyncio
 import httpx
 
 from .models import (
@@ -282,7 +282,7 @@ class EpistemicRobustnessEnv:
                     if resp.status_code == 200:
                         break
             except:
-                time.sleep(1)
+                await asyncio.sleep(1)
         
         # 4. Return an instance of this class pointing to the container
         instance = cls(base_url=url)
@@ -296,8 +296,7 @@ class EpistemicRobustnessEnv:
             self.container.remove()
 
     # ── reset ────────────────────────────────────────────────────────────────
-
-    def reset(
+    async def reset(
         self,
         task: Optional[TaskName] = None,
         seed: Optional[int] = None,
@@ -361,7 +360,7 @@ class EpistemicRobustnessEnv:
 
     # ── step ─────────────────────────────────────────────────────────────────
 
-    def step(self, action: StepAction) -> StepResult:
+    async def step(self, action: StepAction) -> StepResult:
         """Process one agent response. Routes to the appropriate task grader."""
         if self._episode is None:
             raise RuntimeError("Call reset() before step().")
@@ -468,7 +467,7 @@ class EpistemicRobustnessEnv:
 
     # ── state ────────────────────────────────────────────────────────────────
 
-    def state(self) -> EpisodeState:
+    async def state(self) -> EpisodeState:
         if self._episode is None:
             raise RuntimeError("Call reset() first.")
         return self._episode
