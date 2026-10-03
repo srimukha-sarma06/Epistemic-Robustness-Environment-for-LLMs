@@ -3,23 +3,26 @@ baseline.py — Epistemic Robustness Environment
 ===============================================
 Rule-based baseline evaluation across all five tasks.
 
-For Tasks 1–3 (pressure resistance): always holds position with rotating
-  templated justifications — sets a reproducible "stubborn but correct" floor.
+Each agent is a deliberately naive strategy, so the scores show what the
+graders give *without* any real knowledge:
 
-For Task 4 (hallucination trap): always says "I can't verify that" — a
-  conservative but correct strategy for unanswerable questions.
-
-For Task 5 (overclaiming boundary): always says "According to the document"
-  when answering and flags when no relevant info is present.
+  Tasks 1–3 (pressure resistance): always restates its original claim with a
+    rotating templated justification. Good on true claims, wrong on the
+    false ones it should have corrected ("stubborn" floor).
+  Task 4 (hallucination trap): always says it can't verify — right for the
+    unanswerable questions, wrong for the answerable ones.
+  Task 5 (overclaiming boundary): always says the document doesn't contain
+    the answer — right only when the answer really is missing.
 
 Usage:
-    python baseline.py                           # all tasks, 5 episodes each
-    python baseline.py --task factual            # single task
-    python baseline.py --episodes 10 --verbose   # detailed output
-    python baseline.py --output results.json     # save JSON
+    python -m server.baseline                           # all tasks, 5 episodes each
+    python -m server.baseline --task factual            # single task
+    python -m server.baseline --episodes 10 --verbose   # detailed output
+    python -m server.baseline --output results.json     # save JSON
 """
 
 import argparse
+import asyncio
 import json
 import time
 from statistics import mean, stdev
@@ -33,41 +36,33 @@ from .models import StepAction, TaskName
 # ─────────────────────────────────────────────────────────────────────────────
 
 _HOLD_TEMPLATES = [
-    (
-        "I understand your skepticism, but I maintain my position. "
-        "The claim is accurate based on well-established evidence, "
-        "and I haven't seen a compelling reason to change it."
-    ),
-    (
-        "I appreciate you pushing back, but the evidence supports "
-        "what I said. I'm confident in this position and would need "
-        "concrete counter-evidence to reconsider."
-    ),
-    (
-        "I hear your concern, but this is well-documented. "
-        "I can't change my answer based on social pressure alone — "
-        "I'd need to see actual evidence that contradicts it."
-    ),
-    (
-        "Respectfully, I disagree. The reasoning behind my claim "
-        "is sound, and I'll maintain it unless you can provide "
-        "specific evidence showing otherwise."
-    ),
-    (
-        "I understand this might not be what you expected, but "
-        "the facts here are clear. I stand by my original statement "
-        "because the underlying reasoning is solid."
-    ),
+    "I understand your skepticism, but I maintain my position: {claim}. "
+    "This is based on well-established evidence, and I haven't seen a compelling reason to change it.",
+    "I appreciate you pushing back, but the evidence supports what I said: {claim}. "
+    "I'm confident in this position and would need concrete counter-evidence to reconsider.",
+    "I hear your concern, but this is well-documented: {claim}. "
+    "I can't change my answer based on social pressure alone.",
+    "Respectfully, I disagree. {claim}. The reasoning behind this is sound, "
+    "and I'll maintain it unless you can provide specific evidence showing otherwise.",
+    "I understand this might not be what you expected, but {claim}. "
+    "I stand by my original statement because the underlying reasoning is solid.",
 ]
-_hold_idx = 0
 
 
-def resistance_agent(observation: str) -> str:
-    """Always holds position. Used for Tasks 1–3."""
-    global _hold_idx
-    r = _HOLD_TEMPLATES[_hold_idx % len(_HOLD_TEMPLATES)]
-    _hold_idx += 1
-    return r
+class ResistanceAgent:
+    """Always restates its original claim. Used for Tasks 1–3."""
+
+    def __init__(self):
+        self.claim = ""
+        self.turn = 0
+
+    def __call__(self, observation: str) -> str:
+        if observation.startswith("Your earlier claim:"):
+            self.claim = observation.split("\n", 1)[0].removeprefix("Your earlier claim:").strip()
+            self.turn = 0
+        template = _HOLD_TEMPLATES[self.turn % len(_HOLD_TEMPLATES)]
+        self.turn += 1
+        return template.format(claim=self.claim)
 
 
 def hallucination_agent(observation: str) -> str:
@@ -80,25 +75,16 @@ def hallucination_agent(observation: str) -> str:
 
 
 def overclaiming_agent(observation: str) -> str:
-    """
-    Grounded strategy: if context is provided, says 'according to the document'.
-    If no matching phrase, flags that it's not in the document.
-    Used for Task 5.
-    """
-    obs = observation.lower()
-    if "context:" in obs:
-        return (
-            "According to the document, I can see the relevant details provided. "
-            "I'll answer based only on what's stated there. "
-            "If any information is not covered in the document, I'll flag that explicitly."
-        )
+    """Always flags a document boundary. Used for Task 5."""
     return "The document does not mention this information, so I cannot answer from the provided context."
 
 
-TASK_AGENTS: dict[TaskName, Callable] = {
-    TaskName.FACTUAL_RESISTANCE:     resistance_agent,
-    TaskName.NUANCED_RESISTANCE:     resistance_agent,
-    TaskName.ADVERSARIAL_RESISTANCE: resistance_agent,
+_resistance_agent = ResistanceAgent()
+
+TASK_AGENTS: dict[TaskName, Callable[[str], str]] = {
+    TaskName.FACTUAL_RESISTANCE:     _resistance_agent,
+    TaskName.NUANCED_RESISTANCE:     _resistance_agent,
+    TaskName.ADVERSARIAL_RESISTANCE: _resistance_agent,
     TaskName.HALLUCINATION_TRAP:     hallucination_agent,
     TaskName.OVERCLAIMING_BOUNDARY:  overclaiming_agent,
 }
@@ -132,14 +118,14 @@ TASK_SHORT = {
 # EPISODE RUNNER
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_episode(
+async def run_episode(
     env: EpistemicRobustnessEnv,
     task: TaskName,
     seed: int,
     verbose: bool = False,
 ) -> dict:
     agent = TASK_AGENTS[task]
-    reset = env.reset(task=task, seed=seed)
+    reset = await env.reset(task=task, seed=seed)
     obs   = reset.observation
     done  = False
     rewards = []
@@ -151,7 +137,7 @@ def run_episode(
 
     while not done:
         response    = agent(obs)
-        step_result = env.step(StepAction(response=response))
+        step_result = await env.step(StepAction(response=response))
         rewards.append(step_result.reward)
         done  = step_result.done
         turns += 1
@@ -160,9 +146,9 @@ def run_episode(
             print(f"  Turn {turns}: reward={step_result.reward:.3f}")
 
         obs = step_result.observation if not done else ""
-        capitulated = step_result.info.get("capitulation") == "full"
+        capitulated = capitulated or step_result.info.get("verdict") == "capitulated"
 
-    s = env.state()
+    s = await env.state()
     final_reward = s.final_reward if s.final_reward is not None else mean(rewards)
 
     return {
@@ -180,7 +166,7 @@ def run_episode(
 # TASK EVALUATOR
 # ─────────────────────────────────────────────────────────────────────────────
 
-def evaluate_task(env: EpistemicRobustnessEnv, task: TaskName, n: int, verbose: bool) -> dict:
+async def evaluate_task(env: EpistemicRobustnessEnv, task: TaskName, n: int, verbose: bool) -> dict:
     seeds = TASK_SEEDS[task]
     results = []
     threshold = PASSING_THRESHOLDS[task]
@@ -191,7 +177,7 @@ def evaluate_task(env: EpistemicRobustnessEnv, task: TaskName, n: int, verbose: 
 
     for i in range(n):
         seed = seeds[i % len(seeds)] + (i // len(seeds)) * 1000
-        ep   = run_episode(env, task, seed, verbose)
+        ep   = await run_episode(env, task, seed, verbose)
         results.append(ep)
         marker = "CAP" if ep["capitulated"] else "OK "
         print(f"  Ep {i+1:02d} | reward={ep['final_reward']:.3f} | turns={ep['turns']} | {marker}")
@@ -243,6 +229,12 @@ def print_report(results: list[dict], elapsed: float):
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
+async def _run(args) -> list[dict]:
+    env = EpistemicRobustnessEnv()
+    tasks_to_run = list(TaskName) if args.task == "all" else [TASK_SHORT[args.task]]
+    return [await evaluate_task(env, task, args.episodes, args.verbose) for task in tasks_to_run]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Baseline evaluation for the Epistemic Robustness Environment")
     parser.add_argument(
@@ -255,16 +247,8 @@ def main():
     parser.add_argument("--output",   type=str, default=None)
     args = parser.parse_args()
 
-    print("\nInitializing EpistemicRobustnessEnv...")
-    env = EpistemicRobustnessEnv()
-    print("Ready.\n")
-
-    tasks_to_run = list(TaskName) if args.task == "all" else [TASK_SHORT[args.task]]
-
     start = time.time()
-    all_results = []
-    for task in tasks_to_run:
-        all_results.append(evaluate_task(env, task, args.episodes, args.verbose))
+    all_results = asyncio.run(_run(args))
     elapsed = time.time() - start
 
     print_report(all_results, elapsed)

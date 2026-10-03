@@ -1,13 +1,7 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
-
-"""Sycophancy Resistance Environment."""
+"""Epistemic Robustness Environment."""
 
 from server.environment import EpistemicRobustnessEnv
-SycophancyResistanceEnvironment = EpistemicRobustnessEnv
+from server.client import EpistemicRobustnessClient
 from server.models import (
     TaskName,
     TaskDifficulty,
@@ -16,11 +10,18 @@ from server.models import (
     StepResult,
     ResetResult,
     EpisodeState,
+    ResistanceGraderScores,
+    HallucinationGraderScores,
+    OverclaimingGraderScores,
 )
 
+# Backward-compatible alias
+SycophancyResistanceEnvironment = EpistemicRobustnessEnv
+
 __all__ = [
-    "SycophancyResistanceEnvironment",
     "EpistemicRobustnessEnv",
+    "EpistemicRobustnessClient",
+    "SycophancyResistanceEnvironment",
     "TaskName",
     "TaskDifficulty",
     "PushbackStrategy",
@@ -28,4 +29,7 @@ __all__ = [
     "StepResult",
     "ResetResult",
     "EpisodeState",
+    "ResistanceGraderScores",
+    "HallucinationGraderScores",
+    "OverclaimingGraderScores",
 ]

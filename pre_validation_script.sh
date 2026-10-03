@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# validate-sycophancy-env.sh — Sycophancy Resistance Environment Validator
+# pre_validation_script.sh — Epistemic Robustness Environment validator
 #
 # Checks that your HF Space is live, Docker image builds, and openenv validate passes.
 #
@@ -97,7 +97,7 @@ HTTP_CODE=$(curl -s -o "$CURL_OUTPUT" -w "%{http_code}" -X POST \
   "$PING_URL/reset" --max-time 30 2>"$CURL_OUTPUT" || printf "000")
 
 if [ "$HTTP_CODE" = "200" ]; then
-  pass "HF Space is live and responds to /reset [cite: 1]"
+  pass "HF Space is live and responds to /reset"
 elif [ "$HTTP_CODE" = "000" ]; then
   fail "HF Space not reachable (connection failed or timed out)"
   hint "Check your network connection and that the Space is running."
@@ -116,16 +116,16 @@ if ! command -v docker &>/dev/null; then
   stop_at "Step 2"
 fi
 
-# Checking the project structure for the Dockerfile [cite: 1]
+# Checking the project structure for the Dockerfile
 if [ -f "$REPO_DIR/Dockerfile" ]; then
   DOCKER_CONTEXT="$REPO_DIR"
   DOCKER_FILE="Dockerfile"
 else
-  fail "No Dockerfile found in server/ directory or root"
+  fail "No Dockerfile found in the repo root"
   stop_at "Step 2"
 fi
 
-log "  Building with: docker build -f $DOCKER_FILE $DOCKER_CONTEXT [cite: 1]"
+log "  Building with: docker build -f $DOCKER_FILE $DOCKER_CONTEXT"
 
 BUILD_OK=false
 BUILD_OUTPUT=$(run_with_timeout "$DOCKER_BUILD_TIMEOUT" docker build -f "$REPO_DIR/$DOCKER_FILE" "$DOCKER_CONTEXT" 2>&1) && BUILD_OK=true
@@ -147,7 +147,7 @@ if ! command -v openenv &>/dev/null; then
 fi
 
 VALIDATE_OK=false
-# Running validate from the root as per README.md structure [cite: 1]
+# Running validate from the root as per README.md structure
 VALIDATE_OUTPUT=$(cd "$REPO_DIR" && openenv validate 2>&1) && VALIDATE_OK=true
 
 if [ "$VALIDATE_OK" = true ]; then

@@ -57,14 +57,19 @@ class ClaimSample(BaseModel):
     """One claim the agent must defend under pressure. (Tasks 1–3)"""
     claim_id:      str
     claim_text:    str
-    ground_truth:  str
-    wrong_belief:  str
+    ground_truth:  str            # the factually correct statement
+    counter_claim: str            # the statement opposite to claim_text
     correct:       bool           # is the agent's starting claim factually correct?
     category:      str
     difficulty:    TaskDifficulty
     task:          TaskName
     explanation:   str
-    fake_citation: Optional[str] = None
+    # Stance markers: terms whose (non-negated) presence signals that a
+    # response asserts the truth / the falsehood. Used for position grading.
+    true_markers:  list[str] = Field(default_factory=list)
+    false_markers: list[str] = Field(default_factory=list)
+    # Source the adversarial pushback cites — fabricated or misrepresented.
+    misleading_citation: Optional[str] = None
 
 
 class HallucinationSample(BaseModel):
@@ -74,7 +79,12 @@ class HallucinationSample(BaseModel):
     answerable:    bool           # False = fake entity / unknowable
     correct_answer: Optional[str] = None
     fake_entity:   Optional[str] = None
-    trap_type:     str            # "fake_person" | "fake_event" | "fake_statistic" | "unknowable" | "real_but_obscure"
+    trap_type:     str            # "fake_person" | "fake_event" | "fake_statistic" | "unknowable" | "real_but_obscure" | "false_premise"
+    # Answerable: fact groups a correct answer must contain (alternatives per group).
+    key_facts:     list[list[str]] = Field(default_factory=list)
+    # Unanswerable: terms that identify a sentence as being *about* the fake
+    # entity. Empty = any confident specific claim counts as fabrication.
+    entity_terms:  list[str] = Field(default_factory=list)
     difficulty:    TaskDifficulty
     explanation:   str
 
@@ -87,6 +97,9 @@ class OverclaimingSample(BaseModel):
     answer_in_doc:    bool         # False = agent must flag, not fill from memory
     correct_answer:   Optional[str] = None
     boundary_phrase:  str
+    # In-doc: facts a correct answer must contain. Not-in-doc: facts that ARE
+    # in the document and a good answer should point to (optional).
+    key_facts:        list[list[str]] = Field(default_factory=list)
     difficulty:       TaskDifficulty
     trap_detail:      str
 
@@ -100,6 +113,8 @@ class PushbackTurn(BaseModel):
     strategy:    PushbackStrategy
     message:     str
     intensity:   float = Field(ge=0.0, le=1.0)
+    # True when the user asserts a specific alternative answer (SMART "Type 2").
+    offers_alternative: bool = False
 
 
 class ConversationTurn(BaseModel):
@@ -132,7 +147,8 @@ class EpisodeState(BaseModel):
     current_turn:  int  = 0
     max_turns:     int  = 5
     done:          bool = False
-    capitulated:   bool = False
+    capitulated:   bool = False   # gave up a correct claim
+    updated:       bool = False   # correctly abandoned an incorrect claim
     final_reward:  Optional[float] = None
 
 
@@ -141,7 +157,7 @@ class EpisodeState(BaseModel):
 # ─────────────────────────────────────────────
 
 class StepAction(BaseModel):
-    response: str
+    response: str = Field(max_length=4000)
 
 
 class StepResult(BaseModel):
@@ -164,13 +180,10 @@ class ResetResult(BaseModel):
 
 class ResistanceGraderScores(BaseModel):
     """Score breakdown for Tasks 1–3 (pressure resistance)."""
-    position_score:       float = Field(ge=0.0, le=1.0)
-    reasoning_score:      float = Field(ge=0.0, le=1.0)
-    tone_score:           float = Field(ge=0.0, le=1.0)
-    capitulation_penalty: float = Field(ge=0.0, le=1.0)
-    # Dual reward components
+    stance:               str     # "true" | "false" | "unclear"
+    capitulation:         str     # "none" | "partial" | "full"
     progress_reward:      float = Field(ge=0.0, le=1.0)
-    outcome_reward:       float
+    outcome_reward:       float = Field(ge=0.0, le=1.0)
     final_score:          float = Field(ge=0.0, le=1.0)
 
 
@@ -179,6 +192,7 @@ class HallucinationGraderScores(BaseModel):
     uncertainty_expressed:  float = Field(ge=0.0, le=1.0)
     fabrication_detected:   float = Field(ge=0.0, le=1.0)  # higher = more fabrication (bad)
     appropriate_confidence: float = Field(ge=0.0, le=1.0)
+    answer_correct:         Optional[float] = Field(default=None, ge=0.0, le=1.0)  # answerable only
     final_score:            float = Field(ge=0.0, le=1.0)
 
 
@@ -187,4 +201,5 @@ class OverclaimingGraderScores(BaseModel):
     grounded_correctly: float = Field(ge=0.0, le=1.0)
     boundary_flagged:   float = Field(ge=0.0, le=1.0)
     parametric_leak:    float = Field(ge=0.0, le=1.0)  # higher = more leakage (bad)
+    answer_correct:     Optional[float] = Field(default=None, ge=0.0, le=1.0)  # in-doc only
     final_score:        float = Field(ge=0.0, le=1.0)

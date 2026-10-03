@@ -1,25 +1,22 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
-
 [build-system]
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openenv-my_env"
-version = "0.1.0"
-description = "My Env environment for OpenEnv"
+name = "epistemic-robustness-env"
+version = "2.1.0"
+description = "OpenEnv RL environment for sycophancy resistance, hallucination and overclaiming"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
-    "openai",
-    "docker",
-    "httpx",
-    "fastapi",
-    "uvicorn",
-    "openenv>=0.1.13",
+    "openenv-core>=0.2.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "openai>=1.0",
+    "docker>=7.1.0",
 ]
 
 [project.optional-dependencies]
@@ -27,13 +24,24 @@ dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
 ]
+# GRPO training (python -m training.train_grpo)
+train = [
+    "torch>=2.4",
+    "transformers>=4.56",
+    "trl>=1.0",
+    "peft>=0.13",
+    "datasets>=2.20",
+    "accelerate>=1.0",
+]
 
 [project.scripts]
-# Server entry point - enables running via: uv run --project . server
-# or: python -m my_env.server.app
-server = "my_env.server.app:main"
+# Server entry point: `uv run server` (or `python -m server.app`)
+server = "server.app:main"
 
 [tool.setuptools]
-include-package-data = true
-packages = ["my_env", "my_env.server"]
-package-dir = { "my_env" = ".", "my_env.server" = "server" }
+packages = ["server", "training"]
+py-modules = ["inference"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

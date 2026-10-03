@@ -1,85 +1,133 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+"""
+client.py — Async HTTP client for the Epistemic Robustness Environment.
 
-"""Sycophancy Resistance Environment HTTP Client."""
+Exposes the same interface as the in-process EpistemicRobustnessEnv:
 
-import requests
-from typing import Dict, Callable, Optional, Any
-from statistics import mean
+    client = EpistemicRobustnessClient("https://<space>.hf.space")
+    reset  = await client.reset(task=TaskName.HALLUCINATION_TRAP, seed=1)
+    result = await client.step(StepAction(response="..."))
+    state  = await client.state()
+    await client.close()
+
+Every call after reset() is pinned to that episode via its episode_id, so
+several clients can share one server without interfering.
+
+`from_docker_image()` starts the server in a local container and returns a
+client connected to it; close() stops and removes the container.
+"""
+
+import asyncio
+from typing import Optional
+
+import httpx
+
+from .models import EpisodeState, ResetResult, StepAction, StepResult, TaskName
 
 
-class SycophancyResistanceClient:
-    """HTTP client for the Sycophancy Resistance Environment."""
+class EpistemicRobustnessClient:
+    """Async HTTP client with the same API as EpistemicRobustnessEnv."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 30.0,
+                 transport: Optional[httpx.AsyncBaseTransport] = None):
         self.base_url = base_url.rstrip("/")
+        self.episode_id: Optional[str] = None
+        self._http = httpx.AsyncClient(base_url=self.base_url, timeout=timeout, transport=transport)
+        self._container = None
 
-    def health(self) -> str:
-        r = requests.get(f"{self.base_url}/health")
+    # ── lifecycle ────────────────────────────────────────────────────────────
+
+    @classmethod
+    async def from_docker_image(cls, image_name: str, startup_timeout: float = 60.0
+                                ) -> "EpistemicRobustnessClient":
+        """Start `image_name` in Docker, wait until /health responds, return a client."""
+        import docker  # optional dependency; only needed for this path
+
+        docker_client = docker.from_env()
+        container = docker_client.containers.run(image_name, detach=True, ports={"8000/tcp": None})
+        try:
+            container.reload()
+            host_port = container.ports["8000/tcp"][0]["HostPort"]
+            client = cls(f"http://localhost:{host_port}")
+            client._container = container
+
+            deadline = asyncio.get_running_loop().time() + startup_timeout
+            while True:
+                try:
+                    if await client.health():
+                        return client
+                except httpx.HTTPError:
+                    pass
+                if asyncio.get_running_loop().time() > deadline:
+                    raise TimeoutError(f"{image_name} did not become healthy within {startup_timeout}s")
+                await asyncio.sleep(1.0)
+        except BaseException:
+            container.stop()
+            container.remove()
+            raise
+
+    async def close(self) -> None:
+        await self._http.aclose()
+        if self._container is not None:
+            self._container.stop()
+            self._container.remove()
+            self._container = None
+
+    async def __aenter__(self) -> "EpistemicRobustnessClient":
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        await self.close()
+
+    # ── API ──────────────────────────────────────────────────────────────────
+
+    async def health(self) -> bool:
+        r = await self._http.get("/health")
+        return r.status_code == 200 and r.json().get("status") in ("healthy", "ok")
+
+    async def tasks(self) -> list[dict]:
+        r = await self._http.get("/tasks")
         r.raise_for_status()
-        return r.json().get("status")
+        return r.json()
 
-    def reset(self, task: Optional[str] = None, seed: Optional[int] = None) -> Dict:
+    async def reset(self, task: Optional[TaskName] = None, seed: Optional[int] = None) -> ResetResult:
         params = {}
-        if task:
-            params["task"] = task
+        if task is not None:
+            params["task"] = TaskName(task).value
         if seed is not None:
             params["seed"] = seed
-        r = requests.post(f"{self.base_url}/reset", params=params)
+        r = await self._http.post("/reset", params=params)
         r.raise_for_status()
+        result = ResetResult.model_validate(r.json())
+        self.episode_id = result.episode_id
+        return result
+
+    async def step(self, action: StepAction) -> StepResult:
+        r = await self._http.post("/step", params=self._episode_params(), json=action.model_dump())
+        _raise_for_status(r)
+        return StepResult.model_validate(r.json())
+
+    async def state(self) -> EpisodeState:
+        r = await self._http.get("/state", params=self._episode_params())
+        _raise_for_status(r)
+        return EpisodeState.model_validate(r.json())
+
+    async def summary(self) -> dict:
+        r = await self._http.get("/summary", params=self._episode_params())
+        _raise_for_status(r)
         return r.json()
 
-    def step(self, response: str, held_position: bool = True) -> Dict:
-        payload = {"action": {"response": response, "held_position": held_position}}
-        r = requests.post(self.base_url + "/step", json=payload)
-        r.raise_for_status()
-        return r.json()
+    def _episode_params(self) -> dict:
+        if self.episode_id is None:
+            raise RuntimeError("Call reset() before step()/state().")
+        return {"episode_id": self.episode_id}
 
-    def state(self) -> Dict:
-        r = requests.get(f"{self.base_url}/state")
-        r.raise_for_status()
-        return r.json()
 
-    def run_episode(
-        self,
-        agent_fn: Callable[[str], str],
-        task: str,
-        seed: int,
-        verbose: bool = False,
-    ) -> Dict[str, Any]:
-        reset_result = self.reset(task=task, seed=seed)
-        obs = reset_result.get("observation", {})
-        observation = obs.get("current_pushback", "")
-        done = False
-        rewards = []
-        turns = 0
-        capitulated = False
+def _raise_for_status(r: httpx.Response) -> None:
+    """Map 400s (episode misuse) to RuntimeError, like the in-process env."""
+    if r.status_code == 400:
+        raise RuntimeError(r.json().get("detail", r.text))
+    r.raise_for_status()
 
-        while not done and turns < 10:
-            action = agent_fn(observation)
-            step_result = self.step(response=action)
-            rewards.append(step_result.get("reward", 0) or 0)
-            done = step_result.get("done", False)
-            turns += 1
 
-            next_obs = step_result.get("observation", {})
-            if isinstance(next_obs, dict):
-                observation = next_obs.get("current_pushback", "")
-                capitulated = not next_obs.get("held_position_so_far", True)
-            else:
-                observation = ""
-                capitulated = obs.get("held_position_so_far", True) == False
-
-        final_reward = sum(rewards) / len(rewards) if rewards else 0.0
-        return {
-            "episode_id": reset_result.get("episode_id", ""),
-            "task": task,
-            "final_reward": final_reward,
-            "avg_reward": mean(rewards) if rewards else 0.0,
-            "rewards": rewards,
-            "turns": turns,
-            "capitulated": capitulated,
-        }
+# Backward-compatible name
+SycophancyResistanceClient = EpistemicRobustnessClient
