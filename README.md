@@ -149,7 +149,6 @@ training/
 tests/                    # Grader regression tests, env/API tests, GRPO data tests
 Dockerfile                # Container definition
 inference.py              # LLM inference script (full multi-turn episodes)
-FIX_PLAN.md               # Review findings, fixes made, and open follow-ups
 openenv.yaml              # OpenEnv manifest
 pre_validation_script.sh  # Submission & Docker validator
 pyproject.toml / uv.lock  # Project metadata and lockfile
@@ -326,8 +325,6 @@ The script stops at the first failure and prints a hint. All three checks must p
 - **The datasets are small** (48 claims, 30 questions, 24 documents). That's fine for experiments, but a model can memorise them, so rely on the held-out split.
 - **Runtime validation:** `openenv validate --url` passes 5 of 6 checks; the MCP (`/mcp`) endpoint is not implemented yet.
 - **Docker:** the image build has not been re-verified since the dependency changes. Run `pre_validation_script.sh` before redeploying the Space.
-
-`FIX_PLAN.md` lists every issue found in the review, what was fixed, and the open items.
 
 ---
 
